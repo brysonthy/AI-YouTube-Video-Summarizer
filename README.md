@@ -1,190 +1,353 @@
-# YouTube Video Summarizer (Cloudflare Workers AI)
+# YouTube Video Summarizer — Cloudflare Workers AI
 
-Give it a YouTube URL and it prints a short summary of the video.
+A Python tool that takes a YouTube URL and generates a short, readable summary using **Cloudflare Workers AI**.
 
-It uses the video's captions when they exist. If the video has none, it downloads the audio, transcribes it with Whisper, and summarizes the text with Llama. All AI calls run on Cloudflare Workers AI.
+It uses **YouTube captions when available**. If captions cannot be retrieved, it automatically downloads the video's audio, transcribes it with **Whisper**, and summarizes the transcript with **Llama**.
 
-## (Input) YouTube Market Analysis 
+## Features
 
-**Video:** [Singapore & Malaysian Bank Stocks Market Analysis](https://www.youtube.com/watch?v=dJJ77spomeU)
+* 🎬 Accepts standard YouTube URLs
+* 📝 Uses YouTube captions when available
+* 🎙️ Automatically falls back to Whisper speech-to-text
+* 🤖 Summarizes transcripts with Llama on Cloudflare Workers AI
+* ✂️ Splits long transcripts into manageable chunks
+* 🔄 Combines multiple chunk summaries into one final summary
+* ⚙️ Configuration is separated into `settings.py`
+* 🔐 Cloudflare credentials are loaded from `.env`
+* 💻 Runs locally with Python
 
-### (Output) Summary 
-```
+## Example
+
+### Input
+
+**YouTube URL:**
+https://www.youtube.com/watch?v=dJJ77spomeU
+
+### Output
+
+```text
 The speaker discusses current market trends and analyzes Singaporean and Malaysian banking stocks.
 
 Key points:
 
-- The **NASDAQ and S&P 500** have declined, but the speaker considers this manageable rather than a major concern.
-- **US Treasury yields have risen**, contributing to significant pressure on bond prices and the broader global bond market.
-- The weakness in the **bond market and gold market** is highlighted as an important warning signal.
-- Singapore banks — **DBS, OCBC, and UOB** — as well as Malaysian banks, have been affected by the decline in bond prices.
-- The speaker emphasizes that **Singapore banks are not invincible** and can experience significant declines during major market disruptions.
-- The current environment is described as a **K-shaped economy**, where some companies and sectors continue to perform strongly while others struggle.
-- The speaker attributes the market pressure to a combination of **inflation, government borrowing, higher yields, and falling bond prices**.
+- The NASDAQ and S&P 500 have declined, but the speaker considers this manageable rather than a major concern.
+- US Treasury yields have risen, contributing to significant pressure on bond prices and the broader global bond market.
+- Weakness in the bond and gold markets is highlighted as an important warning signal.
+- Singapore banks — DBS, OCBC, and UOB — as well as Malaysian banks, have been affected by the decline in bond prices.
+- The speaker emphasizes that Singapore banks are not invincible and can experience significant declines during major market disruptions.
+- The current environment is described as a K-shaped economy, where some companies and sectors continue to perform strongly while others struggle.
+- The speaker attributes the market pressure to inflation, government borrowing, higher yields, and falling bond prices.
 
 ### Bank Stock Crash Analysis
 
-The speaker uses historical data to examine Singapore bank stocks, particularly **DBS and OCBC**, looking at:
+The speaker uses historical data to examine DBS and OCBC, focusing on:
 
 1. Predictability of major declines
 2. Historical crash depth
-3. Recovery time after major crashes
+3. Recovery time
 4. Potential opportunities during significant market corrections
 
-The conclusion is that **OCBC appears to be a more suitable candidate for a "crash buying" strategy**, while DBS is considered less attractive for this particular approach.
+The speaker concludes that OCBC appears to be a more suitable candidate for a "crash buying" strategy, while DBS is considered less attractive for this particular approach.
 
 ### Investment Strategy
 
-The broader strategy discussed is to avoid assuming that large, established banks will always rise. Instead, investors can study historical crashes and prepare for periods when fundamentally strong companies become significantly cheaper.
+The broader strategy is to avoid assuming that large, established banks will always rise. Instead, investors can study historical crashes and prepare for periods when fundamentally strong companies become significantly cheaper.
 
-The speaker also introduces an investing course covering:
+The speaker also discusses an investing course covering:
 
 - Investing confidence
 - Crash-buying strategies
 - A systematic approach to investing
-- How to evaluate market opportunities during major corrections
+- Evaluating opportunities during major market corrections
 
-> **Note:** This README section summarizes the video's discussion and opinions. It should not be interpreted as financial advice or a recommendation to buy or sell any particular stock.
+Note: This summary reflects the video's discussion and opinions. It is not financial advice or a recommendation to buy or sell any security.
 
 ### Additional Q&A
 
-The video also includes viewer questions, including a discussion about **MSM pills**, which the speaker describes as natural and non-steroid-based.
+The video also includes viewer questions, including a discussion about MSM pills, which the speaker describes as natural and non-steroid-based.
 ```
 
-## How it works
+## How It Works
 
+```text
+                    YouTube URL
+                         │
+                         ▼
+                  Extract Video ID
+                         │
+                         ▼
+                  Fetch Captions
+                         │
+             ┌───────────┴───────────┐
+             │                       │
+          Captions                 No captions
+          available               available
+             │                       │
+             │                       ▼
+             │                 Download Audio
+             │                       │
+             │                       ▼
+             │              Convert + Split Audio
+             │                       │
+             │                       ▼
+             │                 Whisper STT
+             │                       │
+             └───────────┬───────────┘
+                         │
+                         ▼
+                  Full Transcript
+                         │
+                         ▼
+              Split into Text Chunks
+                         │
+                         ▼
+                 Llama Summarization
+                         │
+                         ▼
+              Combine Chunk Summaries
+                         │
+                         ▼
+                  Final Summary
+                         │
+                         ▼
+                  Print to Terminal
 ```
-YouTube URL (settings.py)
-        │
-        ▼
- Get the video ID
-        │
-        ▼
- Fetch captions ──── found ────────────────────┐
- (youtube-transcript-api)                      │
-        │ not available                        │
-        ▼                                      │
- Download audio (yt-dlp)                       │
-        │                                      │
-        ▼                                      │
- Convert to small mono MP3 and                 │
- split into 5-minute pieces (ffmpeg)           │
-        │                                      │
-        ▼                                      │
- Transcribe each piece                         │
- (Whisper on Workers AI)                       │
-        │                                      │
-        ▼                                      ▼
-              Full transcript text
-                        │
-                        ▼
-      Split into chunks (about 12,000 characters)
-                        │
-                        ▼
-      Summarize each chunk (Llama on Workers AI)
-                        │
-                        ▼
-      If there were several chunks, summarize the
-      chunk summaries into one final summary
-                        │
-                        ▼
-                  Print the summary
+
+## Processing Flow
+
+### 1. Extract the Video ID
+
+`get_video_id()` extracts the YouTube video ID from supported URLs including:
+
+* `youtube.com/watch?v=...`
+* `youtu.be/...`
+* `youtube.com/shorts/...`
+* `youtube.com/embed/...`
+* `youtube.com/live/...`
+
+### 2. Fetch Captions
+
+`get_transcript()` attempts to retrieve the video's captions using `youtube-transcript-api`.
+
+Both uploaded and auto-generated captions may be available.
+
+Captions are preferred because they are:
+
+* Faster
+* Cheaper
+* Easier to process
+* More efficient than audio transcription
+
+### 3. Whisper Fallback
+
+If captions cannot be retrieved, `transcribe_video()` automatically:
+
+1. Downloads the video's audio using `yt-dlp`
+2. Converts the audio to mono 16 kHz MP3
+3. Splits the audio into 5-minute segments
+4. Sends each segment to Whisper on Cloudflare Workers AI
+5. Combines the resulting text into one transcript
+
+This fallback is slower and consumes more Workers AI usage.
+
+### 4. Split the Transcript
+
+Long transcripts are split into chunks of approximately `CHUNK_CHARS` characters.
+
+This prevents the entire transcript from exceeding the model's input limits.
+
+### 5. Summarize
+
+Each transcript chunk is sent to the configured Llama model with the system prompt defined in `settings.py`.
+
+If multiple chunks exist, their summaries are combined and summarized again to produce one final summary.
+
+### 6. Print the Result
+
+The final summary is printed directly to the terminal.
+
+## Project Structure
+
+```text
+youtube-video-summarizer/
+│
+├── summarize_video.py     # Main program
+├── settings.py            # Configuration
+├── .env                   # Cloudflare credentials
+├── .gitignore
+└── README.md
 ```
 
-### Step by step
+`main.py` can also be used instead of `summarize_video.py` if you prefer that filename.
 
-1. **Video ID.** `get_video_id()` pulls the ID out of `youtube.com/watch?v=`, `youtu.be/`, `/shorts/`, `/embed/` and `/live/` links.
-2. **Captions first.** `get_transcript()` asks YouTube for the captions (uploaded or auto-generated). This is fast and free.
-3. **Speech-to-text fallback.** If captions can't be retrieved, `transcribe_video()` downloads the audio with `yt-dlp`, converts it to small mono 16 kHz MP3 files, and splits it into 5-minute pieces. Each piece is sent to Whisper (base64-encoded) and the text is joined together. This is slower and uses more of your Cloudflare free allowance.
-4. **Chunking.** Long transcripts are split into pieces of about `CHUNK_CHARS` characters so they fit in the model's input.
-5. **Summarizing.** Each chunk is sent to the Llama model with a prompt asking for a summary. If there was more than one chunk, the partial summaries are summarized again into one final summary.
-6. **Output.** The summary is printed to the terminal.
+## Requirements
 
-Calls to Cloudflare use the REST API directly with `requests` (`https://api.cloudflare.com/client/v4/accounts/<account_id>/ai/run/<model>`), not the `cloudflare` Python SDK, which failed on model names containing slashes in testing.
+* Python 3.10+
+* Cloudflare account with Workers AI access
+* YouTube video URL
+* Internet connection
 
-## Files
+## Installation
 
-| File | Purpose |
-|---|---|
-| `summarize_video.py` (your `main.py`) | The program: captions, transcription, chunking, summarizing |
-| `settings.py` | All configuration: video URL, models, limits, prompt |
-| `.env` | Your Cloudflare credentials (keep private) |
+Create and activate a virtual environment, then install the required packages:
 
-## Setup
+```bash
+pip install requests youtube-transcript-api yt-dlp imageio-ffmpeg python-dotenv
+```
 
-1. **Install Python packages** (inside your virtual environment):
+`imageio-ffmpeg` provides an FFmpeg binary, so FFmpeg does not need to be installed separately.
 
-   ```
-   pip install requests youtube-transcript-api yt-dlp imageio-ffmpeg python-dotenv
-   ```
+## Configuration
 
-   `imageio-ffmpeg` bundles an `ffmpeg` binary, so you don't need to install ffmpeg separately.
+Create a `.env` file in the project directory:
 
-2. **Create a `.env` file** in the same folder, with no quotes or spaces around the `=`:
+```env
+CLOUDFLARE_ACCOUNT_ID=your_account_id
+CLOUDFLARE_API_TOKEN=your_api_token
+```
 
-   ```
-   CLOUDFLARE_ACCOUNT_ID=your_account_id
-   CLOUDFLARE_API_TOKEN=your_api_token
-   ```
+### Cloudflare Account ID
 
-   - The account ID is on the Cloudflare dashboard (Workers & Pages overview).
-   - Create the API token under My Profile → API Tokens, with Workers AI permissions.
-   - If you use git, add `.env` to `.gitignore`.
+Your account ID can be found in the Cloudflare dashboard under **Workers & Pages**.
 
-3. **Set the video** in `settings.py`:
+### Cloudflare API Token
 
-   ```python
-   YOUTUBE_URL = "https://www.youtube.com/watch?v=VIDEO_ID"
-   ```
+Create an API token from:
 
-4. **Run it:**
+**Cloudflare Dashboard → My Profile → API Tokens**
 
-   ```
-   python summarize_video.py
-   ```
+The token must have permission to use Workers AI.
 
-   (or `python main.py` if you kept that file name)
+### Protect Your Credentials
 
-## Settings (`settings.py`)
+Never commit `.env` to GitHub.
 
-| Setting | Default | Meaning |
-|---|---|---|
-| `YOUTUBE_URL` | placeholder | Video to summarize |
-| `MODEL` | `@cf/meta/llama-3.1-8b-instruct-fp8` | Model used for summaries |
-| `SYSTEM_PROMPT` | "You summarize YouTube video transcripts clearly and concisely." | Edit to change the style, e.g. ask for bullet points |
-| `MAX_TOKENS` | `512` | Maximum length of each summary |
-| `CHUNK_CHARS` | `12000` | Approximate transcript size per summarizing call |
-| `WHISPER_MODEL` | `@cf/openai/whisper-large-v3-turbo` | Speech-to-text model for videos without captions |
-| `AUDIO_CHUNK_SECONDS` | `300` | Length of each audio piece sent to Whisper |
+Add this to `.gitignore`:
 
-### Choosing a model
+```gitignore
+.env
+.venv/
+__pycache__/
+*.pyc
+```
 
-All Workers AI models draw from the same daily free allowance, and bigger models use more of it. Check Cloudflare's pricing page for current limits.
+## Configure the Video
 
-| Model | Quality | Allowance use |
-|---|---|---|
-| `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | Best | Heaviest |
-| `@cf/google/gemma-4-26b-a4b-it` | Very good | Medium |
-| `@cf/meta/llama-3.1-8b-instruct-fp8` | Good | Light |
-| `@cf/meta/llama-3.2-3b-instruct` | Decent | Lightest |
+Edit `settings.py`:
 
-To switch, change `MODEL` in `settings.py`. Model availability changes over time. For example, `@cf/facebook/bart-large-cnn` was retired on 2026-05-30.
+```python
+YOUTUBE_URL = "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+Then run:
+
+```bash
+python summarize_video.py
+```
+
+Or, if your file is named `main.py`:
+
+```bash
+python main.py
+```
+
+## Settings
+
+The main configuration is stored in `settings.py`.
+
+| Setting               | Default                              | Description                           |
+| --------------------- | ------------------------------------ | ------------------------------------- |
+| `YOUTUBE_URL`         | Placeholder                          | YouTube video to summarize            |
+| `MODEL`               | `@cf/meta/llama-3.1-8b-instruct-fp8` | Llama model used for summarization    |
+| `SYSTEM_PROMPT`       | Summary prompt                       | Controls the summary style            |
+| `MAX_TOKENS`          | `512`                                | Maximum output tokens per summary     |
+| `CHUNK_CHARS`         | `12000`                              | Approximate transcript size per chunk |
+| `WHISPER_MODEL`       | `@cf/openai/whisper-large-v3-turbo`  | Whisper speech-to-text model          |
+| `AUDIO_CHUNK_SECONDS` | `300`                                | Length of each audio segment          |
+
+### Example Prompt
+
+You can change the summary style through `SYSTEM_PROMPT`.
+
+For example:
+
+```python
+SYSTEM_PROMPT = """
+You summarize YouTube video transcripts clearly and concisely.
+Focus on the main arguments, important facts, conclusions, and actionable points.
+Use short sections and bullet points where appropriate.
+"""
+```
+
+## Choosing a Model
+
+Cloudflare Workers AI model availability and usage limits can change over time.
+
+Example models:
+
+| Model                                      | Quality   | Relative Usage |
+| ------------------------------------------ | --------- | -------------- |
+| `@cf/meta/llama-3.3-70b-instruct-fp8-fast` | Very high | Heavy          |
+| `@cf/google/gemma-4-26b-a4b-it`            | Very good | Medium         |
+| `@cf/meta/llama-3.1-8b-instruct-fp8`       | Good      | Light          |
+| `@cf/meta/llama-3.2-3b-instruct`           | Decent    | Lightest       |
+
+To change the summarization model, update `MODEL` in `settings.py`.
+
+> Model availability, pricing, and usage limits can change. Check Cloudflare's current Workers AI model catalog and pricing before relying on a specific model.
+
+## Why the Cloudflare REST API?
+
+The project calls Workers AI directly through Cloudflare's REST API:
+
+```text
+https://api.cloudflare.com/client/v4/accounts/<account_id>/ai/run/<model>
+```
+
+The project uses Python `requests` rather than the Cloudflare Python SDK.
+
+This avoids issues encountered with model names containing `/`, such as:
+
+```text
+@cf/meta/llama-3.1-8b-instruct-fp8
+```
 
 ## Troubleshooting
 
-| Problem | Likely cause and fix |
-|---|---|
-| `ValueError: Expected a non-empty value for account_id` | `.env` is missing, misnamed (e.g. `.env.txt`), or in a different folder |
-| `Request failed (410) ... deprecated` | The model was retired. Pick another from the Cloudflare model catalog and set `MODEL` |
-| `Request failed (400) ... max_tokens` | Lower `MAX_TOKENS` to the limit the error message names |
-| `No captions available` / `TranscriptsDisabled` | The video has no captions, or YouTube is blocking your connection. The script falls back to speech-to-text automatically |
-| `yt-dlp` download errors | Update it with `pip install -U yt-dlp`. If YouTube is blocking your network, try another network or video |
-| Whisper request fails | Check the error text from Cloudflare; the model name or request format may have changed |
-| Slow run on a long video | Speech-to-text makes one Whisper call per 5 minutes of audio. Try a short video first |
+| Error / Problem                                         | Possible Cause / Solution                                                             |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `ValueError: Expected a non-empty value for account_id` | Check that `.env` exists, is named correctly, and contains `CLOUDFLARE_ACCOUNT_ID`    |
+| `.env` values are not loaded                            | Make sure the file is `.env`, not `.env.txt`, and is located in the project directory |
+| `Request failed (410) ... deprecated`                   | The selected model has been retired. Choose another supported model                   |
+| `Request failed (400) ... max_tokens`                   | Reduce `MAX_TOKENS` according to the limit shown in the error                         |
+| `No captions available`                                 | The video has no accessible captions, so the script will attempt Whisper              |
+| `TranscriptsDisabled`                                   | YouTube has disabled or restricted transcript access                                  |
+| `yt-dlp` download error                                 | Update with `pip install -U yt-dlp` and try again                                     |
+| Whisper request fails                                   | Check the Cloudflare error message and verify the Whisper model/request format        |
+| Long video takes a long time                            | Videos without captions require one Whisper request for every audio segment           |
+| Poor summary                                            | Try a stronger summarization model or improve `SYSTEM_PROMPT`                         |
+| Poor transcript                                         | Auto-generated captions or Whisper may contain transcription errors                   |
 
 ## Limitations
 
-- Summary quality depends on the model and on the transcript quality. Auto-generated captions can contain mistakes.
-- Videos with no speech, or in languages the chosen models handle poorly, may give poor results.
-- Download and transcription may be blocked by YouTube for some networks (VPNs, cloud servers).
-- Only use videos you have the right to process, and follow YouTube's terms of service.
+* Summary quality depends on the quality of the transcript.
+* YouTube auto-generated captions may contain errors.
+* Whisper transcription can be slower for long videos.
+* Videos without speech cannot be meaningfully summarized.
+* Some languages may produce lower-quality transcripts or summaries.
+* YouTube may block or restrict `yt-dlp` downloads depending on the network, IP address, VPN, or video.
+* Cloudflare Workers AI has usage limits and model availability can change.
+* Long videos without captions consume significantly more AI resources because they require Whisper transcription.
+
+## Legal / Usage Notice
+
+Only process videos that you have the right to process.
+
+This project does not provide permission to download, reproduce, or redistribute copyrighted content. Users are responsible for complying with:
+
+* YouTube's Terms of Service
+* Applicable copyright laws
+* Cloudflare's terms and usage policies
+* The rights of video creators and copyright holders
+
+The summaries generated by this project are automated and may contain inaccuracies.
