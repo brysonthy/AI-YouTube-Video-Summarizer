@@ -4,6 +4,52 @@ Give it a YouTube URL and it prints a short summary of the video.
 
 It uses the video's captions when they exist. If the video has none, it downloads the audio, transcribes it with Whisper, and summarizes the text with Llama. All AI calls run on Cloudflare Workers AI.
 
+## (Input) YouTube Market Analysis 
+
+**Video:** [Singapore & Malaysian Bank Stocks Market Analysis](https://www.youtube.com/watch?v=dJJ77spomeU)
+
+### (Output) Summary 
+
+The speaker discusses current market trends and analyzes Singaporean and Malaysian banking stocks.
+
+Key points:
+
+- The **NASDAQ and S&P 500** have declined, but the speaker considers this manageable rather than a major concern.
+- **US Treasury yields have risen**, contributing to significant pressure on bond prices and the broader global bond market.
+- The weakness in the **bond market and gold market** is highlighted as an important warning signal.
+- Singapore banks — **DBS, OCBC, and UOB** — as well as Malaysian banks, have been affected by the decline in bond prices.
+- The speaker emphasizes that **Singapore banks are not invincible** and can experience significant declines during major market disruptions.
+- The current environment is described as a **K-shaped economy**, where some companies and sectors continue to perform strongly while others struggle.
+- The speaker attributes the market pressure to a combination of **inflation, government borrowing, higher yields, and falling bond prices**.
+
+### Bank Stock Crash Analysis
+
+The speaker uses historical data to examine Singapore bank stocks, particularly **DBS and OCBC**, looking at:
+
+1. Predictability of major declines
+2. Historical crash depth
+3. Recovery time after major crashes
+4. Potential opportunities during significant market corrections
+
+The conclusion is that **OCBC appears to be a more suitable candidate for a "crash buying" strategy**, while DBS is considered less attractive for this particular approach.
+
+### Investment Strategy
+
+The broader strategy discussed is to avoid assuming that large, established banks will always rise. Instead, investors can study historical crashes and prepare for periods when fundamentally strong companies become significantly cheaper.
+
+The speaker also introduces an investing course covering:
+
+- Investing confidence
+- Crash-buying strategies
+- A systematic approach to investing
+- How to evaluate market opportunities during major corrections
+
+> **Note:** This README section summarizes the video's discussion and opinions. It should not be interpreted as financial advice or a recommendation to buy or sell any particular stock.
+
+### Additional Q&A
+
+The video also includes viewer questions, including a discussion about **MSM pills**, which the speaker describes as natural and non-steroid-based.
+
 ## How it works
 
 ```
