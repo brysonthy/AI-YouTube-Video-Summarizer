@@ -9,7 +9,7 @@ It uses the video's captions when they exist. If the video has none, it download
 **Video:** [Singapore & Malaysian Bank Stocks Market Analysis](https://www.youtube.com/watch?v=dJJ77spomeU)
 
 ### (Output) Summary 
-
+```
 The speaker discusses current market trends and analyzes Singaporean and Malaysian banking stocks.
 
 Key points:
@@ -49,6 +49,7 @@ The speaker also introduces an investing course covering:
 ### Additional Q&A
 
 The video also includes viewer questions, including a discussion about **MSM pills**, which the speaker describes as natural and non-steroid-based.
+```
 
 ## How it works
 
